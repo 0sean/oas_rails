@@ -150,14 +150,41 @@ module OasRails
       end
 
       # Converts type text to a schema, checking if it's an ActiveRecord class.
+      # Supports {include: ...} syntax for associations, including nested structures, including inside array<...>.
       # @param text [String] The type text to convert.
       # @return [Array] An array containing the class, schema, and required flag.
       def type_text_to_schema(text)
         type_text, required = text_and_required(text)
+        include_assocs = nil
+
+        # Handle array<...> types recursively
+        if type_text =~ /^array<(.+)>$/i
+          inner_type = $1.strip
+          # Recursively extract include_assocs from inner_type
+          inner_klass, inner_schema, _ = type_text_to_schema(inner_type)
+          schema = {
+            type: :array,
+            items: inner_schema
+          }
+          return [Array, schema, required]
+        end
+
+        # Parse {include: ...} syntax, supporting nested structures
+        if type_text =~ /\{\s*include:\s*([^}]*)\}/
+          include_str = $1.strip
+          begin
+            # Try to parse as Ruby array/hash syntax
+            include_assocs = eval(include_str)
+          rescue Exception
+            # Fallback: try to parse as comma-separated list
+            include_assocs = include_str.split(',').map(&:strip)
+          end
+          type_text = type_text.sub(/\{.*\}/, '').strip
+        end
 
         if Utils.active_record_class?(type_text)
           klass = type_text.constantize
-          schema = Builders::EsquemaBuilder.build_outgoing_schema(klass:)
+          schema = Builders::EsquemaBuilder.build_outgoing_schema(klass: klass, include_associations: include_assocs)
         else
           schema = JsonSchemaGenerator.process_string(type_text)[:json_schema]
           klass = Object

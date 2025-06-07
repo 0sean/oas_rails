@@ -120,6 +120,16 @@ module OasRails
         assert_instance_of ResponseExampleTag, tag
         assert_equal 'Invalid Email', tag.text
       end
+
+      test 'parse_tag_with_response supports include associations option' do
+        text = 'Service with calendar dates(200) [Service{include: calendar_dates,other_assoc}]'
+        tag = @factory.parse_tag_with_response('response', text)
+        assert_instance_of ResponseTag, tag
+        assert_equal '200', tag.name
+        # The schema should include calendar_dates and other_assoc if the builder supports it
+        # This is a smoke test for now; deeper schema checks can be added if needed
+        assert tag.schema
+      end
     end
   end
 end
