@@ -115,7 +115,6 @@ module OasRails
           model_to_schema_class.configuration.excluded_columns = excluded_columns
           model_to_schema_class.configuration.exclude_primary_key = exclude_primary_key
           definition = model_to_schema_class::ActiveRecordSchemaBuilder.new(klass).build_schema_definition
-          puts "[DEBUG] Raw schema definition: #{definition.inspect}"
           patch_constraints_defaults!(definition, klass)
           schema = EasyTalk::Builders::ObjectBuilder.new(definition).build.as_json
           fix_schema_default_types!(schema, klass)
